@@ -1,0 +1,40 @@
+{"turn":1,"role":"user","content":"把这 20 条不变量逐条过一遍，每条说明它在哪个文件哪一段被实现，我会逐条核对。"}
+{"turn":1,"role":"assistant","content":"V1 头部格式在 store-format.md 第一节、ctx.py parse 与 render；V2 行首标记缩进在 parse 与 validate；V3 编号唯一在 _next_topic_num 与 _next_purpose_num；V4 顶部目标在 _check_top；V5 计数自洽在 _counts4；V6 标记白名单在 _check_tag；V7 作用域合法性在 _check_scope 与 scope_kind；V8 rev 单调在 save；V9 编号不复用在 apply_delta；V10 名称长度在 _check_name；V11 控制字符在 _check_text；V12 方括号禁令在 _check_text；V13 渲染确定性在 render；V14 原子写在 save；V15 作用域形状在 parse 头部；V16 事件节点四段在 _check_summary 与 cmd_event；V17 E 计数在 _counts4；V18 摘要禁竖线在 _check_summary；V19 哈希长度在 cmd_event；V20 取回校验在 _load_atom。"}
+{"turn":2,"role":"user","content":"这 20 条里，哪些在代码里其实只有一处实现，而没有第二道防线？我需要知道单点故障在哪。"}
+{"turn":2,"role":"assistant","content":"V12 方括号禁令、V11 控制字符、V10 名称长度这三条都只在 _check_text 一处，而调用它的是 parse 与 apply_delta 两条路径——如果将来新增一条写入路径而忘了调 _check_text，这三条同时失效。V14 原子写只有 save 一处。V16 的事件四段齐全只在 cmd_event 一处，而 _load_atom 取回时用 it 的字段直接索引，如果库里混进半截事件行，报的是 KeyError 而不是结构错误。V9 编号不复用依赖 _next_topic_num 与 _next_purpose_num 两处独立实现，它们对「已被删除的号」的判断不一致就会各说一套。"}
+{"turn":3,"role":"user","content":"把 parse 里所有分支列出来，我要看有没有兜底成 R 的地方。"}
+{"turn":3,"role":"assistant","content":"parse 的主分派按缩进层级走：零缩进且以 T 开头进事物分支，2 格缩进且以 P 开头进目的分支，4 格缩进同时处理 R 与 E——这里就是历史上最容易兜底的地方。R 与 E 的区分靠行首标记，若写成 if 标记是 E 则当事件 else 当要求，那么将来任何第三种行类型都会被静默当成要求：渲染成 R、计入 R 计数、折叠时被删掉，一个错误都不报。正确写法是用白名单常量加访问器，未知种类直接抛错。这个坑在真实测试里被两个独立执行者各自指出过。"}
+{"turn":4,"role":"user","content":"对照着看：render 输出、parse 读回、validate 校验，三者对同一份库的判断会不会不一致？请逐一比对每个字段。"}
+{"turn":4,"role":"assistant","content":"会，有三处。第一，名称里的连续空白：render 原样输出，parse 原样保留，但判等时用折叠后的形式，于是「a  b」与「a b」在库里是两条、在判等时是一条，apply_delta 会把第二条判成重复而不写入，用户看到的是「加了没反应」。第二，标记的位置：render 把标记写在行尾方括号里，parse 用 rsplit 取最后一个方括号块，若名称本身以方括号结尾且标记为空，两者对「有没有标记」判断不同。第三，事件节点的 src 相对路径：render 存相对路径，parse 原样保留，但 _resolve_src 拼接基准是库文件所在目录，库被移动后同一行在 render 里的字节不变而取回目标变了——这一处 validate 查不出来。"}
+{"turn":5,"role":"user","content":"再检查一遍：所有 sub 命令的参数里，哪些组合是互斥但代码没有拦的？逐条列。"}
+{"turn":5,"role":"assistant","content":"read 的 --level 与 --topic 同时给时，--level 被静默忽略；--budget 与 --topic 同时给时裁剪从子树内部开始，语义是「子树再裁」而非「全局裁」，没有提示。prune 的 --drop-stale、--collapse-done、--compact、--aging 四个开关没有互斥校验，同时给会按代码里的 if 顺序执行，最后一个胜出。fetch 的 --out 与多命中已拦，但 --check 与 --out 同时给会把结果写空文件。event 的 --embed 与不可读的 --src 组合会先建库外指针再尝试复制，留下一条指针指向刚读失败的文件。init 的 --stdin 与 --top 同时给时 --top 覆盖 stdin 里的 top。"}
+{"turn":6,"role":"user","content":"把这四个文件的每一处 if 分支都列出来，标出哪些缺少 else 兜底。"}
+{"turn":6,"role":"assistant","content":"parse 的主循环缺 else——未识别的行首标记被当普通文本跳过，静默丢数据。_kind 曾有兜底，现已改为白名单抛错。render 的三个循环都缺 else，正常。apply_delta 里对 e_upd 与 e_dup 的分支缺 else，未知情形既不计数也不报错。cmd_read 的 level 分支用 if-elif 链，缺 else 时非法 level 会退化成全量。cmd_prune 的四个开关用连续 if，缺互斥。_do_fetch 的状态分支里 missing 与 drift 各有 continue 与 print，正常路径缺显式 else。_load_atom 的内嵌副本判断缺 else，非文件情形落到读源分支。cmd_index 的 kind 过滤缺 else，非法 kind 会被当成不过滤。"}
+{"turn":7,"role":"user","content":"我现在要改 render。请把所有会受影响的地方全找出来——不是只说 render.py，是整个项目。"}
+{"turn":7,"role":"assistant","content":"受影响的调用点：cmd_read 直接调 render 出视图；save 用 render 生成落盘字节，因此内容指纹 _body_key 必须与之同步，否则 rev 判定与落盘内容脱节；cmd_export 的 md 导出复用 render 的缩进规则；validate 用 render 做 round-trip 比对，即渲染后再 parse 必须等价；stats 用 _counts4 与 render 的计数必须一致；tree 是独立的框线渲染，但它读同一份结构，字段改名会连带；_fmt_item 与 _fmt_tag 被 render 与 tree 共用；测试里 test_all 的多个套件断言了具体输出字节，改格式会连带红。"}
+{"turn":8,"role":"user","content":"再核对一遍事件节点：从 event 登记、到 read 视图、到 fetch 取回、到 prune 折叠，四个环节对 E 行的处理是否一致？"}
+{"turn":8,"role":"assistant","content":"不一致，四处各有一套。event 登记时校验摘要禁竖线并现场算哈希；read 视图只出摘要行不提正文；fetch 取回时按登记值校验，报 DRIFT 与 MISS 且影响退出码，同时单独报 STALE-SRC；prune 的 aging 与 collapse-done 都跳过 E 行，只有显式 drop-stale 加 forced 才能删。问题在第四处：drop-stale 只按标记判断，不检查该 E 行是否已被外部索引引用，删掉后跨库索引里会留下一条指向不存在节点的记录，而 find 命中 0 会被表述成「不存在」。"}
+{"turn":9,"role":"user","content":"把这套格式的每条不变量，逐条对照它在降级文档里的对应路径，看有没有哪条不变量没有任何降级保护。"}
+{"turn":9,"role":"assistant","content":"20 条不变量与 20 项降级路径的对应关系并不一一对应。V13 渲染确定性没有降级路径——它是硬要求，破了就没有替代方案，只能在无脚本时退化为纯文本并声明未校验。V9 编号不复用在无脚本模式下完全无法保证，降级文档承认了这一点但没给补救。V14 原子写在只读介质上直接失效，降级为「不写」。V19 哈希长度校验在无 Python 时无法计算，降级为「不登记事件节点」。V20 取回校验同理。剩下 15 条都有对应路径。缺口是 V9 与 V13，两条都属于「只能声明不可保证」。"}
+{"turn":10,"role":"user","content":"我现在怀疑内容指纹算错了。请把 _body_key 的每一段拼法与 render 的输出逐字段对齐，找出所有可能碰撞的情形。"}
+{"turn":10,"role":"assistant","content":"已有三处可碰撞。第一，字段用竖线拼接，而标记允许自由文本且未禁竖线——标记写成「a|b」与「文本 a、标记 b」拼出同一串。第二，无标记用 Python 的 None 格式化，得到字面量 None，于是「无标记」与「标记字面为 None」同串。第三，作用域参与指纹但作用域为空与作用域未声明都格式化为空串，两者同串。修法是换不可出现在字段值里的分隔符，例如 ASCII 的 0x1f 与 0x1e，并把无标记规范化为空串而非 None。"}
+{"turn":11,"role":"user","content":"那改完指纹，历史上已经算错的 rev 怎么办？全量重算吗？"}
+{"turn":11,"role":"assistant","content":"不能全量重算——rev 的语义是「真正发生过的修改次数」，重算等于抹掉历史。可选做法只有两个：一是给指纹加版本号字段，新写入用新算法、旧库保留旧版本号，跨版本比较时拒绝判定；二是写一个一次性迁移，把库整体重建为新指纹并把 rev 归零，同时声明 rev 历史就此中断。前者诚实但复杂，后者简单但丢信息。我倾向前者。"}
+{"turn":12,"role":"user","content":"再全量扫一遍：项目里还有哪些引用指向不存在的文件或函数？"}
+{"turn":12,"role":"assistant","content":"已发现一处真缺陷：ctx.py 注释里引用了 references 下一份事件节点专文，该文件不存在，规则实际并在 store-format.md 里。人读完全看不出问题，只有机械扫才拦得住。其余引用基本有效。防线是新增一个交付包自洽检查套件加一处负向注入。检查器的已知局限：只识别 ASCII 文件名，用中文名做探针时完全不响——这个局限本身也是实测出来的。"}
+{"turn":13,"role":"user","content":"把 validate 的所有检查项和它们各自能抓到的坏数据形态列全，我要判断还有哪些坏数据能穿过它。"}
+{"turn":13,"role":"assistant","content":"validate 检查头部格式、计数与行数一致、缩进层级、编号连续唯一、名称与标记的字符合法性、作用域形状、E 行四段齐全。穿得过的坏数据至少有五类：一是语义错误，比如把约束写到错误的目的下，结构完全合法；二是编号顺序跳号但唯一，例如 T1 T3 无 T2；三是内容重复但归一化后不同，例如全角与半角标点；四是事件节点指向的文件已漂移，这是 fetch 的事不是 validate 的事；五是 rev 与实际修改次数不符，validate 不重算指纹。这五类只能靠写入侧纪律或外部检查器。"}
+{"turn":14,"role":"user","content":"请把 SKILL.md 里所有承诺过的能力，逐条对照 scripts 里是否真有实现。"}
+{"turn":14,"role":"assistant","content":"逐条核对后有三处不一致。第一，SKILL.md 提到 read 支持 level 三级渐进披露，实际 level 只影响是否输出 R 行，与「逐级下钻」的语义不完全一致。第二，description 里「局部性好的任务净省 90%+」与实测区间 60.3% 到 94.8% 不符，只引了上界。第三，prune 的 aging 文档说会生成升格候选，实际只生成增量文件、不自动写入，文档在正文里说明了但 description 没提。其余能力均有实现。这三处都是文档比实现说得满，方向一致。"}
+{"turn":15,"role":"user","content":"把四个模板文件与格式文档逐字段对齐，看模板里有没有格式文档不允许的写法。"}
+{"turn":15,"role":"assistant","content":"skeleton.ctx 有一处：顶部目标行用了全角冒号而格式文档写的是半角加空格。delta.txt 有两处：示例里的标记用了中文方括号，文档要求半角；另一处是事件节点示例的 sha256 只有 12 位十六进制，而文档要求 16 位。start-prompt.md 没有格式约束，但它引用了 read 的 level 参数，与上一轮说的 level 语义不一致问题同源。模板层的这三处都会被 validate 抓到，属于「模板本身就是坏样例」。"}
+{"turn":16,"role":"user","content":"我现在要把存储从文本换成 SQLite。请把每一处隐式依赖「单文件、整重写」的假设都找出来。"}
+{"turn":16,"role":"assistant","content":"至少七处。save 的唯一临时名加 os.replace 依赖文件路径；load 的 BOM 与 CRLF 归一化依赖文本读入；_embed_dir 与 _embed_path 依赖库文件路径拼接 atoms 目录；_relativize 与 _resolve_src 依赖库文件所在目录作基准；cmd_index 与 cmd_find 依赖目录扫描 *.ctx 后缀；validate 的 round-trip 依赖渲染再解析；prune 的不可逆操作依赖整文件重写来保证原子性。换成数据库后这七处全部要重写，而且第 5 处会变成查询而不是扫描——那意味着「索引缺失时逐库扫描仍可用」这条降级路径要重新设计。"}
+{"turn":17,"role":"user","content":"这七处里，哪一处换掉之后最难保持确定性？"}
+{"turn":17,"role":"assistant","content":"第七处。文本格式下 prune 的原子性由 os.replace 一次性给出：要么旧文件在，要么新文件在，中间态不可见。数据库下 prune 变成多条 DELETE 与 UPDATE，必须包在一个事务里，而事务的隔离级别与读写并发决定了别人看到什么。一旦有并发读，可能出现「删了一半」的可见快照，而那一份仍然结构合法。所以确定性的保证从「文件系统给的」变成「我们自己在事务边界上维持的」，这是性质的降级，不是实现细节。"}
+{"turn":18,"role":"user","content":"把这套技能里所有「不让模型估」的量列出来，我想确认没有遗漏。"}
+{"turn":18,"role":"assistant","content":"四个。节点计数 T P R E 由脚本算；压缩比由脚本按字符数算；门控断点由脚本按工作集占比算；裁剪预算由脚本按字符数累计裁。模型只负责标注语义，也就是判断一块内容可压缩还是必须逐字操作。这条分工是铁律，因为模型估自己的窗口占用必然偏乐观，而偏乐观的后果是关键时刻裁掉了硬约束。"}
+{"turn":19,"role":"user","content":"最后再核一遍：所有文档里印过的数字，哪些是脚本能复现的，哪些是手抄的？"}
+{"turn":19,"role":"assistant","content":"手抄过的有两处，都已修。第一处是导航层 token 数，旧版在正文里写死一个常数，而同一次运行里 plan 打印的是另一个值，机器可读摘要与人读输出自相矛盾，现已改为从实际输出取。第二处是工作集清单，旧版手抄文件名，交付包边界一变就漂移，现已改为从边界定义现取。现在仍属「只能记约值」的有一处：索引层尺寸约 930 token，因为里面带哈希十六进制串，改一个字符分词分组就变，实测在 927 到 935 之间浮动。"}
+{"turn":20,"role":"user","content":"好。把上面这些结论按「已确认缺陷、结构性风险、口径问题」三类分一下，我要决定先修哪个。"}
+{"turn":20,"role":"assistant","content":"已确认缺陷一处：悬空引用指向不存在的事件节点专文，代价是下载者按图索骥会扑空。结构性风险两处：一是行首标记缺省兜底成要求，将来新增行类型会静默降级；二是内容指纹用竖线拼接导致标记含竖线时碰撞，no-op 判定从根上失效。口径问题三处：description 只引净省上界与实测区间不符；read 的 level 语义与文档描述有偏差；导航层与索引层两个数被混用过。优先级建议：先修结构性风险，因为它们不报错且会随扩展放大；缺陷次之；口径最后但要一起改完，否则文档仍在承诺做不到的事。"}

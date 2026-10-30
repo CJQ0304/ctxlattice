@@ -1,0 +1,13 @@
+{
+  "name": "none-short",
+  "description": "3 轮短会话，单点问答，没有回顾需求",
+  "corpus": [
+    "../context-lattice/SKILL.md"
+  ],
+  "corpus_tokens": 8506,
+  "corpus_note": "8506 = SKILL.md 自身的 token 数（v1.2.2）；短会话场景下这是唯一相关素材",
+  "locality": "none",
+  "script_source": "scripted-from-real-worklog",
+  "script_basis": "真实发生过的元问题类型（问子命令参数与互斥关系），按其形态改写为 3 轮",
+  "notes": "这一档必须显示 B 臂更贵 —— 冻结块是净开销，短会话没有回本空间。若 B 臂在这一档也省，说明冻结块的成本没被计入测量"
+}

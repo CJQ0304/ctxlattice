@@ -1,0 +1,18 @@
+{
+  "name": "good-repo-evolution",
+  "description": "围绕同一个仓库连续 40 轮开发，多轮回头引用早前决定（第 12、27、32、37 轮明确回访第 3、5、12、26 轮的结论）",
+  "corpus": [
+    "../context-lattice/SKILL.md",
+    "../context-lattice/references/store-format.md",
+    "../context-lattice/references/split-rules.md",
+    "../context-lattice/references/lifecycle.md",
+    "../context-lattice/references/compression-strategy.md",
+    "../context-lattice/scripts/ctx.py"
+  ],
+  "corpus_tokens": 94233,
+  "corpus_note": "94233 = context-lattice v1.2.2 交付包 14 个文本文件的总 token（o200k_base），取自该项目 REPORT-realworld.md 的层 A 口径；此处列出的是与本剧本最相关的 6 个，分母仍按 14 文件算",
+  "locality": "good",
+  "script_source": "scripted-from-real-worklog",
+  "script_basis": "按 2026-10 期间该仓库的真实改动与争论顺序编排；用户侧措辞据 .workbuddy/memory 下的工作日志与项目决策记录重写；助手回复为等长改写，非逐字转录",
+  "notes": "三次回访是本剧本的构造关键点：第 12 轮回访第 3 轮的确定性要求，第 27 轮回访第 12 轮的混合快照，第 38 轮回访第 37 轮的缓存风险。没有回访则 R 段与 F 段的差别体现不出来"
+}

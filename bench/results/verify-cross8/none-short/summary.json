@@ -1,0 +1,10 @@
+{
+  "input_saving_pct": -5.718585402558318,
+  "cost_saving_pct": -9.173478655767475,
+  "break_even_turn": null,
+  "delta_used": 0.1,
+  "price_used": 1.0,
+  "tokenizer": "tiktoken:o200k_base:2024-07",
+  "transcript_sha256": "b168d66e79f3e214620a34816034c82c9fe03db0182ae208069cbdac59bdca7b",
+  "mode": "exact"
+}

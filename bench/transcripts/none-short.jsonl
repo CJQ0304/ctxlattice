@@ -1,0 +1,6 @@
+{"turn":1,"role":"user","content":"ctx.py 的 read 支持哪几种 level？"}
+{"turn":1,"role":"assistant","content":"三种。level 1 只出事物名，用来先判断这轮跟哪些事物相关；level 2 出事物与目的名；level 3 出全量含要求行。实践中绝大多数情况不该用 level 3，用 --topic 取单支更省。"}
+{"turn":2,"role":"user","content":"那 --budget 和 --level 能一起用吗？"}
+{"turn":2,"role":"assistant","content":"能。--budget 是在选定层级之后再做一次按字符裁剪，键层永不裁，事件节点也不裁。这两个参数是先后关系不是互斥关系。"}
+{"turn":3,"role":"user","content":"好，谢谢。我去试一下。"}
+{"turn":3,"role":"assistant","content":"行，有问题再喊我。"}

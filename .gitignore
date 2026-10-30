@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+
+# 存储与临时产物
+*.db
+*.db-wal
+*.db-shm
+*.atoms/
+session.db
+
+# 开发期草稿（不属于交付物）
+.conc_test/
+.tmp*/
+scratch/
+
+# 测量原始产物可以提交，但中间件不进
+bench/results/*/raw/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

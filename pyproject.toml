@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ctxlattice"
+version = "0.1.0"
+description = "C1 上下文存储 SDK：由存储装配 provider 可直接发送的 payload"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "阿客实验室 研发部" }]
+keywords = ["context", "llm", "prompt", "token", "cache"]
+
+# 核心包**无强制第三方依赖**：只依赖标准库（sqlite3 / hashlib / json）。
+# 这是刻意的 —— 核心层要在任何环境里能跑，tiktoken 只是"精确计数"这一个口径的依赖。
+dependencies = []
+
+[project.optional-dependencies]
+# 精确 token 计数（MEASUREMENT-SPEC §4 的主表口径）。
+# 不装也能跑，但报告必须标 mode=estimate，结论降级为"量级判断"。
+bench = ["tiktoken>=0.5"]
+
+[project.urls]
+# 本表**有意留空**：这个包还没有自己的仓库地址。
+# 不要填 `https://example.invalid/...` 这类占位 —— 占位比留空坏：`pip show` 会把它当成
+# 真地址印出来，而"地址是假的"这件事只有点进去才知道。与"引用不存在的符号"同类：
+# 假引用不会报错，只会让验证的人白跑一趟。
+
+[tool.setuptools]
+# ⚠️ **必须显式列出子包。** 只写 `["ctxlattice"]` 时，`ctxlattice.bench` 不会进安装件 ——
+# 源码树里 `python -m ctxlattice.bench` 照跑（因为 cwd 在 sys.path 上），
+# 装到别处就是 `No module named ctxlattice.bench`。
+#
+# 这不是缺省值问题，是**交付件丢掉了测量能力**：这个包的全部卖点是「能真实测出省多少
+# token」，而 bench 一旦不在安装件里，"可测量"就只剩源码树里成立。
+# 判据：**凡是"在源码树里能跑"的东西，都要在 wheel 里再验一遍** —— 源码树不是交付物。
+packages = ["ctxlattice", "ctxlattice.bench"]
+
+[tool.setuptools.package-data]
+ctxlattice = ["prompts/*.md"]

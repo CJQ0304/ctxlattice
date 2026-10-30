@@ -1,0 +1,17 @@
+{
+  "name": "bad-full-scan",
+  "description": "20 轮全量审计：每轮都要求「逐条」「全量」「是否一致」「还有哪些」，工作集天然接近全部素材",
+  "corpus": [
+    "../context-lattice/SKILL.md",
+    "../context-lattice/references/store-format.md",
+    "../context-lattice/references/degradation.md",
+    "../context-lattice/references/coverage-matrix.md",
+    "../context-lattice/scripts/ctx.py"
+  ],
+  "corpus_tokens": 94233,
+  "corpus_note": "与 good 档同一分母，保证两档可比",
+  "locality": "bad",
+  "script_source": "scripted-from-real-worklog",
+  "script_basis": "取自该仓库真实做过的审计轮次：不变量逐条对齐、分支兜底排查、指纹碰撞排查、模板与格式文档对齐、存储迁移的隐式假设盘点",
+  "notes": "这是测量方法的自检档。若 B 臂在这一档仍然大省，说明测量有偏（很可能是把「少发了历史」误算成「少读了素材」），必须先修方法再谈结论。期望方向：B 臂衰减甚至转负"
+}

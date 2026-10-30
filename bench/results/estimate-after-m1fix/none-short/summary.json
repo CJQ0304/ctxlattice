@@ -1,0 +1,10 @@
+{
+  "input_saving_pct": -6.640762981278692,
+  "cost_saving_pct": -10.725765521908293,
+  "break_even_turn": null,
+  "delta_used": 0.1,
+  "price_used": 1.0,
+  "tokenizer": "estimate:ceil(chars/2)",
+  "transcript_sha256": "b168d66e79f3e214620a34816034c82c9fe03db0182ae208069cbdac59bdca7b",
+  "mode": "estimate"
+}
