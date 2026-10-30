@@ -22,10 +22,9 @@ dependencies = []
 bench = ["tiktoken>=0.5"]
 
 [project.urls]
-# 本表**有意留空**：这个包还没有自己的仓库地址。
-# 不要填 `https://example.invalid/...` 这类占位 —— 占位比留空坏：`pip show` 会把它当成
-# 真地址印出来，而"地址是假的"这件事只有点进去才知道。与"引用不存在的符号"同类：
-# 假引用不会报错，只会让验证的人白跑一趟。
+Homepage = "https://github.com/CJQ0304/ctxlattice"
+Repository = "https://github.com/CJQ0304/ctxlattice"
+Issues = "https://github.com/CJQ0304/ctxlattice/issues"
 
 [tool.setuptools]
 # ⚠️ **必须显式列出子包。** 只写 `["ctxlattice"]` 时，`ctxlattice.bench` 不会进安装件 ——

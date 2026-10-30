@@ -43,6 +43,15 @@ ctxlattice：[ S ][ F 冻结块 ][ R 边界内原文 ][ U 本轮 ]         ← �
 - **短会话更贵**（约 `L < 2N` 轮）。冻结块是净开销，没有回本空间。
 - 已发出的历史消息不是「读取源」，替换不了。它能救的只有跨会话、长会话被压缩或截断、窗口吃紧要主动卸载这三种情形。
 
+## 安装
+
+```bash
+pip install git+https://github.com/CJQ0304/ctxlattice.git
+```
+
+核心包零第三方依赖（只用到标准库）。要跑 `mode=exact` 的精确计数再加一个 extra：
+`pip install "ctxlattice[bench] @ git+https://github.com/CJQ0304/ctxlattice.git"`。
+
 ## 快速开始
 
 ```python
